@@ -1,0 +1,77 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © imbes2
+
+//@version=4
+study("Pivot Tracker", overlay = true)
+
+//lookback period
+lb = input(type = input.integer, defval = 30, minval = 3, title = "Number of Pivots")
+pivotlb = input(type = input.integer, defval = 6, minval = 1, title = "Pivot Lookback")
+pivotlf = input(type = input.integer, defval = 4, minval = 1, title = "Pivot Lookahead")
+upperoffset = input(type = input.float, defval = .005, minval = .001, maxval = .100, title = 'Upper Text Offset', tooltip = 'This is placed based on percent above the high price of pivot.')
+loweroffset = input(type = input.float, defval = .005, minval = .001, maxval = .100, title = 'Lower Text Offset', tooltip = 'This is placed based on percent below the low price of the pivot.') 
+
+//constants
+hh = "HH"
+lh = "LH"
+hl = "HL"
+ll = "LL"
+
+
+//colors
+chh = input(type= input.color, defval = color.new(color.green, 35),  title=  "Higher High", type = input.color)
+chl = input(type= input.color, defval = color.new(#3179f5, 35),      title = "Higher Low", type = input.color)
+clh = input(type= input.color, defval = color.new(color.orange, 35), title = "Lower High", type = input.color)
+cll = input(type= input.color, defval = color.new(color.red, 35),    title = "Lower Lower", type = input.color)
+
+
+//define new arrays
+var ph_arr = array.new_float(0)
+var pl_arr = array.new_float(0)
+var ph_index = array.new_float(0)
+var pl_index =  array.new_float(0)
+
+// pivothi and lo
+
+pihi = pivothigh(high, pivotlb, pivotlf)
+pilo = pivotlow(low, pivotlb, pivotlf)
+
+//shift the array to the right and add the new pivot to the index 0
+if (not na(pihi))
+    array.unshift(ph_arr, pihi)
+    array.unshift(ph_index, bar_index)
+    
+if (not na(pilo))
+    array.unshift(pl_arr, pilo)
+    array.unshift(pl_index, bar_index)
+
+
+if array.size(ph_arr)>=lb
+    ph_slice = array.slice(ph_arr, 0, lb)
+    ph_bar_slice = array.slice(ph_index, 0, lb)
+    
+    for i=0 to (lb-2) by 1
+        if array.get(ph_slice, i) > array.get(ph_slice, i+1)
+            xbar = int((array.get(ph_bar_slice, i)-(pivotlf)))
+            ybar = (1+upperoffset)*(array.get(ph_slice, i))
+            x = label.new(x = xbar, y = ybar, xloc= xloc.bar_index, yloc= yloc.price, text = hh, textcolor = chh, style= label.style_none)
+            
+        else if array.get(ph_arr, i) < array.get(ph_arr, i+1)
+            xbar = int((array.get(ph_index, i)-(pivotlf)))
+            ybar = (1+upperoffset)*(array.get(ph_arr, i))
+            x = label.new(x = xbar, y = ybar, xloc= xloc.bar_index, yloc= yloc.price, text = lh, textcolor = clh, style= label.style_none)
+
+if array.size(pl_arr)>=lb
+    pl_slice = array.slice(pl_arr, 0, lb)
+    pl_bar_slice = array.slice(pl_index, 0, lb)
+    
+    for i=0 to (lb-2) by 1
+        if array.get(pl_slice, i) > array.get(pl_slice, i+1)
+            xbar = int((array.get(pl_bar_slice, i)-(pivotlf)))
+            ybar = (1-loweroffset)*(array.get(pl_slice, i))
+            x = label.new(x = xbar, y = ybar, xloc= xloc.bar_index, yloc= yloc.price, text = hl, textcolor = chl, style= label.style_none)
+            
+        else if array.get(pl_slice, i) < array.get(pl_slice, i+1)
+            xbar = int((array.get(pl_bar_slice, i)-pivotlf))
+            ybar = (1-loweroffset)*(array.get(pl_slice, i))
+            x = label.new(x = xbar, y = ybar, xloc= xloc.bar_index, yloc= yloc.price, text = ll, textcolor = cll, style= label.style_none)

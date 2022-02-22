@@ -1,0 +1,33 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © imbes
+
+//@version=4
+study(title="Volume Trends", shorttitle="VolTrends", resolution="", precision=3)
+
+barcolor=input(type=input.bool, title="Match Candle and Bar Color?", defval=false)
+ltfL=input(type=input.integer, title="Long Time Frame Length", defval=100)
+stfL=input(type=input.integer, title="Short Time Frame Length", defval=12)
+voldevthresh=input(type=input.float, title="Volume Deviation Threshold", defval=1.00, tooltip ="Deviation threshold against the long time frame volume average to plot a volume bar")
+
+
+
+
+ltfvol=sma(volume, ltfL)
+stfvol=sma(volume, stfL)
+voltrend= stfvol>ltfvol
+plotvol= volume>ltfvol and volume>stfvol ? volume :na
+
+
+sdev =(stdev(volume, ltfL))
+zscore= (stfvol-ltfvol)/sdev
+
+
+voldev=(volume-ltfvol)/sdev
+devthresh= voldev>voldevthresh
+
+colorswitch1 = voltrend ? color.new(#00bcd4, 70) : color.new(#FF510D, 70)
+colorswitch2 = plotvol and open>close ? color.new(#FF510D, 0) : plotvol and close>open ? color.new(#e57373, 0) : na
+
+
+zscoreplot=plot(zscore, title="Short Vol", color=colorswitch1, style= plot.style_area)
+plot(plotvol and devthresh ? voldev : na, title="Big Volume Bars", color=barcolor ? colorswitch2 : color.new(color.white, 70), style=plot.style_columns)

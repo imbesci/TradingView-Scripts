@@ -1,0 +1,389 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © imbes
+
+//@version=4
+study("Tradingview Toolkit", shorttitle =  "Toolkit", overlay=true)
+
+//////////////////////////////////////////////////////////  ALL INPUTS ////////////////////////////////////////////////////////
+//VWAP 1//
+timeprice = input(type=input.string, options=["1 Hour", "1 Day", "1 Week", "1 Month", "1 Year"], defval= "1 Month", title="Choose Timeframe", group = "VWAP Bands 1")
+showvwap= input(true, type=input.bool, title="Show VWAP?", group = "VWAP Bands 1")
+showdev = input(false, type=input.bool, title="Show Standard Deviations?", group = "VWAP Bands 1")
+showPrevVWAP = input(false, type=input.bool, title="Show previous VWAP close", group = "VWAP Bands 1")
+//VWAP 2//
+timeprice1 = input(type=input.string, options=["1 Hour", "1 Day", "1 Week", "1 Month", "1 Year"], defval= "1 Day", title="Choose Timeframe", group = "VWAP Bands 2")
+showvwap1= input(false, type=input.bool, title="Show VWAP?", group = "VWAP Bands 2")
+showdev1 = input(false, type=input.bool, title="Show Standard Deviations?", group = "VWAP Bands 2")
+showPrevVWAP1 = input(false, type=input.bool, title="Show previous VWAP close", group = "VWAP Bands 2")
+//VWAP 3//
+timeprice2 = input(type=input.string, options=["1 Hour", "1 Day", "1 Week", "1 Month", "1 Year"], defval= "1 Year", title="Choose Timeframe", group = "VWAP 3")
+showvwap2 = input(false, type=input.bool, title="Show VWAP?", group = "VWAP 3")
+showPrevVWAP2 = input(false, type=input.bool, title="Show previous VWAP close", group = "VWAP 3")
+//BB 1//
+show1=input(title="Display Bands Set #1?", type=input.bool, defval=false, group="BB Set 1")
+show2=input(title="Show Standard Deviation Bands?", type=input.bool, defval=false, group="BB Set 1")
+tf1=input(title="Timeframe", type=input.resolution, defval="", group="BB Set 1")
+bt1=input(title="Middle Band Type", type=input.string, options=["SMA", "EMA", "VWMA", "HMA"], defval="SMA", tooltip="Select the BB middle band calculation", group="BB Set 1")
+l1=input(title="Band #1 length", type=input.integer, minval=1, defval=20, tooltip="Middle BB Base Length", group="BB Set 1")
+
+//BB 2//
+show3=input(title="Display Bands Set #2?", type=input.bool, defval=false, group="BB Set 2")
+show4=input(title="Show Standard Deviation Bands?", type=input.bool, defval=false, group="BB Set 2", tooltip = "+-0.5 Bands omitted for space reasons")
+tf2=input(title="Timeframe", type=input.resolution, defval="", group="BB Set 2")
+bt2=input(title="Middle Band Type", type=input.string, options=["SMA", "EMA", "VWMA", "HMA"], defval="SMA", tooltip="Select the BB middle band calculation", group="BB Set 2")
+l2=input(title="Band #1 length", type=input.integer, minval=1, defval=20, tooltip="Middle BB Base Length", group="BB Set 2")
+
+
+//MA options
+
+machoice1 = input(type=input.bool, defval=false, title = "Turn MA 1 on?", group = "MA Set 1") 
+machoice1length = input(type= input.integer, title= "MA 1 length", defval = 8, minval=1, group = "MA Set 1")
+mastyle1 = input(type=input.string, title = "MA 1 Type?", options = ["SMA", "EMA", "HMA", "VWMA"], defval="SMA", group = "MA Set 1")
+ma1res=input(type=input.resolution, title = "MA 1 Timeframe", defval="", group = "MA Set 1")
+
+machoice2 = input(type=input.bool, defval=false, title = "Turn MA 2 on?", group = "MA Set 2") 
+machoice2length = input(type= input.integer, title= "MA 2 length", defval = 20, minval=1, group = "MA Set 2") 
+mastyle2 = input(type=input.string, title = "MA 2 Type?", options = ["SMA", "EMA", "HMA", "VWMA"], defval="SMA", group = "MA Set 2")
+ma2res=input(type=input.resolution, title = "MA 1 Timeframe", defval="", group = "MA Set 2")
+
+machoice3 = input(type=input.bool, defval=false, title = "Turn MA 3 on?", group = "MA Set 3") 
+machoice3length= input(type= input.integer, title= "MA 3 length", defval = 50, minval=1, group = "MA Set 3") 
+mastyle3 = input(type=input.string, title = "MA 3 Type?", options = ["SMA", "EMA", "HMA", "VWMA"], defval="SMA", group = "MA Set 3")
+ma3res=input(type=input.resolution, title = "MA 1 Timeframe", defval="", group = "MA Set 3")
+
+//Inside Bar//
+insidebar = input(type=input.bool, defval=false, title = "Repaint Inside Candles?", tooltip = "If you enable then disable the repaint, hide and unhide the indicator to repaint the candles back to normal")
+
+// Extra //
+g = #8cffe5
+r = #ff848a
+src=close
+
+//VWAP 1 Calcs// 
+int timeframe= 0
+start1 = security(syminfo.tickerid, "60", time, barmerge.gaps_off, barmerge.lookahead_on)
+start2 = security(syminfo.tickerid, "D", time, barmerge.gaps_off, barmerge.lookahead_on)
+start3 = security(syminfo.tickerid, "W", time, barmerge.gaps_off, barmerge.lookahead_on)
+start4 = security(syminfo.tickerid, "M", time, barmerge.gaps_off, barmerge.lookahead_on)
+start5 = security(syminfo.tickerid, "12M", time, barmerge.gaps_off, barmerge.lookahead_on)
+
+if timeprice == "1 Hour"
+    timeframe := start1
+else if timeprice == "1 Day"
+    timeframe := start2
+else if timeprice == "1 Week"
+    timeframe := start3
+else if timeprice == "1 Month"
+    timeframe := start4
+else if timeprice == "1 Year"
+    timeframe := start5
+
+newSession = iff(change(timeframe), 1, 0)
+
+vwaptotal = hl2*volume
+vwaptotal := iff(newSession, hl2*volume, vwaptotal[1]+hl2*volume)
+
+volumetotal = volume
+volumetotal := iff(newSession, volume, volumetotal[1]+volume)
+
+v2sum = volume*hl2*hl2
+v2sum := iff(newSession, volume*hl2*hl2, v2sum[1]+volume*hl2*hl2)
+
+vwapfinal = vwaptotal/volumetotal
+deviation = sqrt(max(v2sum/volumetotal - vwapfinal*vwapfinal, 0))
+
+prevwap = vwapfinal[1]
+prevwap := iff(newSession, vwapfinal[1], prevwap[1])
+
+updev1= vwapfinal + (.5 * deviation)
+downdev1= vwapfinal + (-.5 * deviation)
+updev2= vwapfinal + (1 * deviation)
+downdev2= vwapfinal + (-1 * deviation)
+updev3= vwapfinal + (1.5 * deviation)
+downdev3= vwapfinal + (-1.5 * deviation)
+updev4= vwapfinal + (2 * deviation)
+downdev4= vwapfinal + (-2 * deviation)
+updev5= vwapfinal + (2.5 * deviation)
+downdev5= vwapfinal + (-2.5 * deviation)
+updev6= vwapfinal + (3 * deviation)
+downdev6= vwapfinal + (-3 * deviation)
+
+
+color1=color.new(#b2b5be, 90)
+color2=not newSession ? color.new(#48cddc, 30) : na
+
+A=plot(showvwap ? vwapfinal : na, style=plot.style_line, title="VWAP 1", color=color2)
+
+U1=plot(showvwap and showdev ? updev1 : na, style=plot.style_line, color=color1, title="VWAP Deviation +.5")
+D1=plot(showvwap and showdev ? downdev1 : na, style=plot.style_line, color=color1, title="VWAP Deviation -.5")
+U2=plot(showvwap and showdev ? updev2: na, color=color1, title="VWAP Deviation +1")
+D2=plot(showvwap and showdev ? downdev2: na, color=color1, title="VWAP Deviation -1")
+U3=plot(showvwap and showdev ? updev3 : na, color=color1, title="VWAP Deviation +1.5")
+D3=plot(showvwap and showdev ? downdev3 : na, color=color1, title="VWAP Deviation -1.5")
+U4=plot(showvwap and showdev ? updev4 : na, color=color1, title="VWAP Deviation +2")
+D4=plot(showvwap and showdev ? downdev4 : na, color=color1, title="VWAP Deviation -2")
+U5=plot(showvwap and showdev ? updev5 : na, color=color1, title="VWAP Deviation +2.5")
+D5=plot(showvwap and showdev ? downdev5 : na, color=color1, title="VWAP Deviation -2.5")
+U6=plot(showvwap and showdev ? updev6 : na, color=color.new(#c53331, 60), title="VWAP Deviation +3")
+D6=plot(showvwap and showdev ? downdev6 : na, color=color.new(#66bb6a, 60), title="VWAP Deviation -3")
+
+fadegreen= not newSession ? color.new(color.green, transp=40) : na
+fadered= not newSession ? color.new(color.red, transp=40) : na
+plot(showPrevVWAP ? prevwap : na, style=plot.style_line, color=close > prevwap ? fadegreen : fadered, title = "Previous VWAP Line [1]")
+
+
+fill(U4, U5, color=color.new(#b2b5be, 85), title="Fill +2-2.5")
+fill(U5, U6, color=color.new(#c53331, 75), title="Fill Deviation +2.5-3")
+fill(D4, D5, color=color.new(#b2b5be, 85), title="Fill Deviation -2-2.5")
+fill(D5, D6, color=color.new(#66bb6a, 75), title="Fill Deviation -2.5-3")
+
+//VWAP Bands 2//
+int timeframe1= 0
+start6 = security(syminfo.tickerid, "60", time, barmerge.gaps_off, barmerge.lookahead_on)
+start7 = security(syminfo.tickerid, "D", time, barmerge.gaps_off, barmerge.lookahead_on)
+start8 = security(syminfo.tickerid, "W", time, barmerge.gaps_off, barmerge.lookahead_on)
+start9 = security(syminfo.tickerid, "M", time, barmerge.gaps_off, barmerge.lookahead_on)
+start10 = security(syminfo.tickerid, "12M", time, barmerge.gaps_off, barmerge.lookahead_on)
+
+if timeprice1 == "1 Hour"
+    timeframe1 := start1
+else if timeprice1 == "1 Day"
+    timeframe1 := start2
+else if timeprice1 == "1 Week"
+    timeframe1 := start3
+else if timeprice1 == "1 Month"
+    timeframe1 := start4
+else if timeprice1 == "1 Year"
+    timeframe1 := start5
+    
+    
+newSession1= iff(change(timeframe1), 1, 0)
+
+vwaptotal1 = hl2*volume
+vwaptotal1 := iff(newSession1, hl2*volume, vwaptotal1[1]+hl2*volume)
+
+volumetotal1 = volume
+volumetotal1 := iff(newSession1, volume, volumetotal1[1]+volume)
+
+v2sum1 = volume*hl2*hl2
+v2sum1 := iff(newSession1, volume*hl2*hl2, v2sum1[1]+volume*hl2*hl2)
+
+vwapfinal1 = vwaptotal1/volumetotal1
+deviation1 = sqrt(max(v2sum1/volumetotal1 - vwapfinal1*vwapfinal1, 0))
+
+prevwap1 = vwapfinal1[1]
+prevwap1 := iff(newSession1, vwapfinal1[1], prevwap1[1])
+
+updev7= vwapfinal1 + (.5 * deviation1)
+downdev7= vwapfinal1 + (-.5 * deviation1)
+updev8= vwapfinal1 + (1 * deviation1)
+downdev8= vwapfinal1 + (-1 * deviation1)
+updev9= vwapfinal1 + (1.5 * deviation1)
+downdev9= vwapfinal1 + (-1.5 * deviation1)
+updev10= vwapfinal1 + (2 * deviation1)
+downdev10= vwapfinal1 + (-2 * deviation1)
+updev11= vwapfinal1 + (2.5 * deviation1)
+downdev11= vwapfinal1 + (-2.5 * deviation1)
+updev12= vwapfinal1 + (3 * deviation1)
+downdev12= vwapfinal1 + (-3 * deviation1)
+
+color3=not newSession1 ? color.new(#48cddc, 30) : na
+
+A1=plot(showvwap1 ? vwapfinal1 : na, style=plot.style_line, title="VWAP 2", color=color3)
+
+U7=plot(showvwap1 and showdev1 ? updev7 : na, style=plot.style_line, color=color1, title="VWAP Deviation +.5 [2]")
+D7=plot(showvwap1 and showdev1 ? downdev7 : na, style=plot.style_line, color=color1, title="VWAP Deviation -.5 [2]")
+U8=plot(showvwap1 and showdev1 ? updev8 : na, color=color1, title="VWAP Deviation +1 [2]")
+D8=plot(showvwap1 and showdev1 ? downdev8: na, color=color1, title="VWAP Deviation -1 [2]")
+U9=plot(showvwap1 and showdev1 ? updev9 : na, color=color1, title="VWAP Deviation +1.5 [2]")
+D9=plot(showvwap1 and showdev1 ? downdev9 : na, color=color1, title="VWAP Deviation -1.5 [2]")
+U10=plot(showvwap1 and showdev1 ? updev10 : na, color=color1, title="VWAP Deviation +2 [2]")
+D10=plot(showvwap1 and showdev1 ? downdev10 : na, color=color1, title="VWAP Deviation -2 [2]")
+U11=plot(showvwap1 and showdev1 ? updev11 : na, color=color1, title="VWAP Deviation +2.5 [2]")
+D11=plot(showvwap1 and showdev1 ? downdev11 : na, color=color1, title="VWAP Deviation -2.5 [2]")
+U12=plot(showvwap1 and showdev1? updev12 : na, color=color.new(#c53331, 60), title="VWAP Deviation +3 [2]")
+D12=plot(showvwap1 and showdev1 ? downdev12 : na, color=color.new(#66bb6a, 60), title="VWAP Deviation -3 [2]")
+
+
+fadegreen1= not newSession1 ? color.new(color.green, transp=40) : na
+fadered1= not newSession1? color.new(color.red, transp=40) : na
+plot(showPrevVWAP1 ? prevwap1 : na, style=plot.style_line, color=close > prevwap1 ? fadegreen1 : fadered1, title = "Previous VWAP Line [2]")
+
+
+
+fill(U10, U11, color=color.new(#b2b5be, 85), title="Fill +2-2.5 [2]")
+fill(U11, U12, color=color.new(#c53331, 75), title="Fill Deviation +2.5-3 [2]")
+fill(D10, D11, color=color.new(#b2b5be, 85), title="Fill Deviation -2-2.5 [2]")
+fill(D11, D12, color=color.new(#66bb6a, 75), title="Fill Deviation -2.5-3 [2]")
+
+//VWAP Plot 3//
+
+int timeframe2= 0
+start11 = security(syminfo.tickerid, "60", time, barmerge.gaps_off, barmerge.lookahead_on)
+start12 = security(syminfo.tickerid, "D", time, barmerge.gaps_off, barmerge.lookahead_on)
+start13 = security(syminfo.tickerid, "W", time, barmerge.gaps_off, barmerge.lookahead_on)
+start14 = security(syminfo.tickerid, "M", time, barmerge.gaps_off, barmerge.lookahead_on)
+start15 = security(syminfo.tickerid, "12M", time, barmerge.gaps_off, barmerge.lookahead_on)
+
+
+if timeprice2 == "1 Hour"
+    timeframe2 := start11
+else if timeprice2 == "1 Day"
+    timeframe2 := start12
+else if timeprice2 == "1 Week"
+    timeframe2 := start13
+else if timeprice2 == "1 Month"
+    timeframe2 := start14
+else if timeprice2 == "1 Year"
+    timeframe2 := start15
+
+newSession2 = iff(change(timeframe2), 1, 0)
+
+vwaptotal2 = hl2*volume
+vwaptotal2 := iff(newSession2, hl2*volume, vwaptotal2[1]+hl2*volume)
+
+volumetotal2 = volume
+volumetotal2 := iff(newSession2, volume, volumetotal2[1]+volume)
+
+v2sum2 = volume*hl2*hl2
+v2sum2 := iff(newSession2, volume*hl2*hl2, v2sum2[1]+volume*hl2*hl2)
+
+vwapfinal2 = vwaptotal2/volumetotal2
+deviation2 = sqrt(max(v2sum2/volumetotal2 - vwapfinal2*vwapfinal2, 0))
+
+prevwap2 = vwapfinal2[1]
+prevwap2 := iff(newSession2, vwapfinal2[1], prevwap2[1])
+
+
+color4=not newSession2 ? color.new(color.orange, 40) : na
+
+A2=plot(showvwap2 ? vwapfinal2 : na, style=plot.style_line, title="VWAP 3", color=color4)
+fadegreen2= not newSession2 ? color.new(color.green, transp=40) : na
+fadered2= not newSession2? color.new(color.red, transp=40) : na
+plot(showPrevVWAP2 ? prevwap2 : na, style=plot.style_line, color=close > prevwap2 ? fadegreen2 : fadered2, title = "Previous VWAP Line [3]")
+
+// BB 1 //
+
+sma1= security(syminfo.tickerid, tf1, sma(src, l1))
+ema1= security(syminfo.tickerid, tf1, ema(src, l1))
+vwma1= security(syminfo.tickerid, tf1, vwma(src, l1))
+hma1= security(syminfo.tickerid, tf1, hma(src, l1))
+eq1 = sma1
+
+//Security//
+if bt1=="SMA"
+    eq1:=sma1
+else if bt1=="EMA"
+    eq1:=ema1
+else if bt1=="VWMA"
+    eq1:=vwma1    
+else if bt1=="HMA"
+    eq1:=hma1
+
+//Standard Deviations//
+poshalf_stdev= eq1 + security(syminfo.tickerid, tf1, .5*(stdev(src, l1)))
+neghalf_stdev= eq1 + security(syminfo.tickerid, tf1, -.5*(stdev(src, l1)))
+posone_stdev= eq1 + security(syminfo.tickerid, tf1, 1*(stdev(src, l1)))
+negone_stdev= eq1 + security(syminfo.tickerid, tf1, -1*(stdev(src, l1)))
+posonehalf_stdev= eq1 + security(syminfo.tickerid, tf1, 1.5*(stdev(src, l1)))
+negonehalf_stdev= eq1 + security(syminfo.tickerid, tf1, -1.5*(stdev(src, l1)))
+postwo_stdev= eq1 + security(syminfo.tickerid, tf1, 2*(stdev(src, l1)))
+negtwo_stdev= eq1 + security(syminfo.tickerid, tf1, -2*(stdev(src, l1)))
+postwohalf_stdev= eq1 + security(syminfo.tickerid, tf1, 2.5*(stdev(src, l1)))
+negtwohalf_stdev= eq1 + security(syminfo.tickerid, tf1, -2.5*(stdev(src, l1)))
+posthree_stdev= eq1 + security(syminfo.tickerid, tf1, 3*(stdev(src, l1)))
+negthree_stdev= eq1 + security(syminfo.tickerid, tf1, -3*(stdev(src, l1)))
+
+//Set 1 Plots//
+ma1=plot(show1 ? eq1 : na, color=color.new(color.fuchsia, 40), title="Middle Band")
+ma2=plot(show1 and show2? poshalf_stdev : na, color=color1, title="+.5 Standard Dev [1]")
+ma3=plot(show1 and show2? neghalf_stdev : na, color=color1, title="-.5 Standard Dev [1]")
+ma4=plot(show1 and show2? posone_stdev : na, color=color1, title="+1 Standard Dev [1]")
+ma5=plot(show1 and show2? negone_stdev : na, color=color1, title="-1 Standard Dev [1]")
+ma6=plot(show1 and show2? posonehalf_stdev : na, color=color1, title="+1.5 Standard Dev [1]")
+ma7=plot(show1 and show2? negonehalf_stdev : na, color=color1, title="-1.5 Standard Dev [1]")
+ma8=plot(show1 and show2? postwo_stdev : na, color=color1, title="+2 Standard Dev [1]")
+ma9=plot(show1 and show2? negtwo_stdev : na, color=color1, title="-2 Standard Dev [1]")
+ma10=plot(show1 and show2? postwohalf_stdev : na, color=color1, title="+2.5 Standard Dev [1]")
+ma11=plot(show1 and show2? negtwohalf_stdev : na, color=color1, title="-2.5 Standard Dev [1]")
+ma12=plot(show1 and show2? posthree_stdev : na, color=color.new(#ff848a, 65), title="+3 Standard Dev [1]")
+ma13=plot(show1 and show2? negthree_stdev : na, color=color.new(#8cffe5, 65), title="-3 Standard Dev [1]")
+
+//Set 1 Fill//
+fill(ma9, ma11, color=color.new(#b2b5be, 90), title="2-2.5 Dev Fill [1]")
+fill(ma11, ma13, color=color.new(#8cffe5, 85), title="2.5-3 Dev Fill [1]")
+fill(ma8, ma10, color=color.new(#b2b5be, 90), title="-2-2.5 Dev Fill [1]")
+fill(ma10, ma12, color=color.new(#ff848a, 85), title="-2.5-3 Dev Fill [1]")
+
+
+////BB SET 2/////
+sma2= security(syminfo.tickerid, tf2, sma(src, l2))
+ema2= security(syminfo.tickerid, tf2, ema(src, l2))
+vwma2= security(syminfo.tickerid, tf2, vwma(src, l2))
+hma2= security(syminfo.tickerid, tf2, hma(src, l2))
+eq2 = sma2
+
+//BB Switch for Set 2//
+if bt2=="SMA"
+    eq2:=sma2
+else if bt2=="EMA"
+    eq2:=ema2
+else if bt2=="VWMA"
+    eq2:=vwma2   
+else if bt2=="HMA"
+    eq2:=hma2
+    
+//Standard Deviations Set 2//
+
+posone_stdev2= eq2 + security(syminfo.tickerid, tf2, 1*(stdev(src, l2)))
+negone_stdev2= eq2 + security(syminfo.tickerid, tf2, -1*(stdev(src, l2)))
+posonehalf_stdev2= eq2 + security(syminfo.tickerid, tf2, 1.5*(stdev(src, l2)))
+negonehalf_stdev2= eq2 + security(syminfo.tickerid, tf2, -1.5*(stdev(src, l2)))
+postwo_stdev2= eq2 + security(syminfo.tickerid, tf2, 2*(stdev(src, l2)))
+negtwo_stdev2= eq2 + security(syminfo.tickerid, tf2, -2*(stdev(src, l2)))
+postwohalf_stdev2= eq2 + security(syminfo.tickerid, tf2, 2.5*(stdev(src, l2)))
+negtwohalf_stdev2= eq2 + security(syminfo.tickerid, tf2, -2.5*(stdev(src, l2)))
+posthree_stdev2= eq2 + security(syminfo.tickerid, tf2, 3*(stdev(src, l2)))
+negthree_stdev2= eq2 + security(syminfo.tickerid, tf2, -3*(stdev(src, l2)))
+
+//BB Plot Set 2//
+ma14=plot(show3 ? eq2 : na, color=color.new(color.white, transp=40), title="Middle Band")
+ma17=plot(show3 and show4? posone_stdev2 : na, color=color1, title="+1 Standard Dev [2]")
+ma18=plot(show3 and show4? negone_stdev2 : na, color=color1, title="-1 Standard Dev [2]")
+ma19=plot(show3 and show4? posonehalf_stdev2 : na, color=color1, title="+1.5 Standard Dev [2]")
+ma20=plot(show3 and show4? negonehalf_stdev2 : na, color=color1, title="-1.5 Standard Dev [2]")
+ma21=plot(show3 and show4? postwo_stdev2 : na, color=color1, title="+2 Standard Dev [2]")
+ma22=plot(show3 and show4? negtwo_stdev2 : na, color=color1, title="-2 Standard Dev [2]")
+ma23=plot(show3 and show4? postwohalf_stdev2 : na, color=color1, title="+2.5 Standard Dev [2]")
+ma24=plot(show3 and show4? negtwohalf_stdev2 : na, color=color1, title="-2.5 Standard Dev [2]")
+ma25=plot(show3 and show4? posthree_stdev2 : na, color=color.new(#ff848a, transp=70), title="+3 Standard Dev [2]")
+ma26=plot(show3 and show4? negthree_stdev2 : na, color=color.new(#8cffe5, transp=70), title="-3 Standard Dev [2]")
+
+
+//BB Set 2 Fill//
+fill(ma21, ma23, color=color.new(#b2b5be, transp=92), title="2-2.5 Dev Fill [2]")
+fill(ma23, ma25, color=color.new(#8cffe5, transp=92), title="2.5-3 Dev Fill [2]")
+fill(ma22, ma24, color=color.new(#b2b5be, transp=92), title="-2-2.5 Dev Fill [2]")
+fill(ma24, ma26, color=color.new(#ff848a, transp=92), title="-2.5-3 Dev Fill [2]")
+
+//MA Set//
+//Switch//
+Mode1(mastyle1, _src, _len) => mastyle1=="SMA" ? sma(src, machoice1length) : mastyle1=="EMA" ? ema(src, machoice1length) : mastyle1=="HMA" ? hma(src, machoice1length) : mastyle1=="VWMA" ? vwma(src, machoice1length) : na
+Mode2(mastyle2, _src, _len) => mastyle2=="SMA" ? sma(src, machoice2length) : mastyle2=="EMA" ? ema(src, machoice2length) : mastyle2=="HMA" ? hma(src, machoice2length) : mastyle2=="VWMA" ? vwma(src, machoice2length) : na    
+Mode3(mastyle3, _src, _len) => mastyle3=="SMA" ? sma(src, machoice3length) : mastyle3=="EMA" ? ema(src, machoice3length) : mastyle3=="HMA" ? hma(src, machoice3length) : mastyle3=="VWMA" ? vwma(src, machoice3length) : na
+
+//number//
+plotmode1=security(syminfo.tickerid, ma1res, Mode1(mastyle1, src, machoice1length))
+plotmode2=security(syminfo.tickerid, ma2res, Mode2(mastyle2, src, machoice2length))
+plotmode3=security(syminfo.tickerid, ma3res, Mode3(mastyle3, src, machoice3length))
+
+//plotnumber//
+machoice1plot = plot(machoice1 ? plotmode1 : na, style=plot.style_line, color=color.yellow, title="MA 1")
+machoice2plot = plot(machoice2 ? plotmode2 : na, style=plot.style_line, color=color.purple, title="MA 2")
+machoice3plot = plot(machoice3 ? plotmode3 : na, style=plot.style_line, color=color.red, title="MA 3")
+
+// Inside Bar Fill
+highcrit= high < high[1] ? true : false
+lowcrit= low > low[1] ? true : false
+crit = highcrit and lowcrit
+barcolor(insidebar and crit ? color.new(#512da8, 30) : na)

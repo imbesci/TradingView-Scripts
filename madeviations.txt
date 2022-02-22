@@ -1,0 +1,39 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © imbes2
+
+//@version=4
+study("Moving Average Deviations", shorttitle = "MA Devs", overlay=false)
+len= input(type=input.integer, title = "MA Length", defval=20, minval=1)
+res=input(type=input.resolution, title ="Timeframe", defval="")
+mastyle1 = input(type=input.string, title = "Moving Average Type?", options = ["SMA", "EMA", "HMA", "VWMA", "DEMA"], defval="SMA")
+lookback= input(type=input.integer, title = "Lookback", defval=100, minval=1)
+percentThreshold = input(type=input.float, title = "Threshold Percent", defval = 7.00, minval = .01)
+
+
+toDecimal = (100-percentThreshold)/100
+
+
+dema(ress, lenn) => 
+    e1 = security(syminfo.tickerid, ress, ema(close, lenn))
+    e2 = security(syminfo.tickerid, ress, ema(e1, lenn))
+    dema1 = 2 * e1 - e2
+
+Mode1(mastyle1, _src, _len) => mastyle1== "SMA" ? sma(close, len) : mastyle1=="EMA" ? ema(close, len) : mastyle1=="HMA" ? hma(close, len) : mastyle1=="VWMA" ? vwma(close, len) : mastyle1 == "DEMA" ?  dema(res, len) : na
+
+macalc= security(syminfo.tickerid, res, Mode1(mastyle1, close, len))
+percentchange= ((close-macalc)/macalc)*100
+
+//color
+hhigh=highest(percentchange, lookback)
+llow=lowest(percentchange, lookback)
+howhigh= (percentchange/hhigh)
+lightgreen= percentchange>0 and howhigh < toDecimal
+sellgreen=percentchange>0 and howhigh >= toDecimal
+
+howlow= percentchange/llow
+lightred= percentchange<0 and howlow < toDecimal
+buyred= percentchange<0 and howlow >= toDecimal
+
+colorset= lightgreen ? color.new(#a5d6a7, 20) : sellgreen ? color.new(#388e3c, 20) : lightred ? color.new(#ef9a9a, 20) : buyred ? color.new(#d32f2f, 20) : na
+
+histo = plot(percentchange, title = "MA Dev", color=colorset, linewidth=1, style=plot.style_histogram, histbase=0, display = display.all)

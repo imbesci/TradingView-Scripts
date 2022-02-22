@@ -1,0 +1,64 @@
+
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © imbes2
+
+//@version=4
+study("Triple DEMA", overlay = true, precision =2)
+
+enable1 = input(type = input.bool, title = 'Enable DEMA 1', defval = false, group = 'On/Off')
+enable2 = input(type = input.bool, title = 'Enable DEMA 2', defval = false, group = 'On/Off')
+enable3 = input(type = input.bool, title = 'Enable DEMA 3', defval = false, group = 'On/Off')
+showichicloud = input(type = input.bool, title = "Show Ichimoku Cloud?", defval = false, group = "On/Off")
+
+
+res1 = input(type = input.resolution, defval = '', title =  "DEMA 1 Timeframe", group = 'Timeframe') 
+res2 = input(type = input.resolution, defval = '', title =  "DEMA 2 Timeframe", group = 'Timeframe') 
+res3 = input(type = input.resolution, defval = '', title = "DEMA 3 Timeframe", group = 'Timeframe') 
+
+
+len1 = input(type= input.integer, defval = 126, group = 'Lengths')
+len2 = input(type= input.integer, defval = 252, group = 'Lengths')
+len3 = input(type= input.integer, defval = 378, group = 'Lengths')
+
+conversionPeriods = input(9, minval=1, title="Conversion Line Periods", group = "Ichimoku"),
+basePeriods = input(26, minval=1, title="Base Line Periods", group = "Ichimoku")
+laggingSpan2Periods = input(52, minval=1, title="Lagging Span 2 Periods", group = "Ichimoku"),
+displacement = input(26, minval=1, title="Displacement",  group = "Ichimoku")
+
+e1 = security(syminfo.tickerid, res1, ema(close, len1))
+e2 = security(syminfo.tickerid, res1, ema(e1, len1))
+dema1 = 2 * e1 - e2
+
+e3 = security(syminfo.tickerid, res2, ema(close, len2))
+e4 = security(syminfo.tickerid, res2, ema(e3, len2))
+dema2 = 2 * e3 - e4
+
+
+e5 = security(syminfo.tickerid, res3, ema(close, len3))
+e6 = security(syminfo.tickerid, res3, ema(e5, len3))
+dema3 = 2 * e5 - e6
+
+
+donchian(len) => avg(lowest(len), highest(len))
+
+conversionLine = donchian(conversionPeriods)
+baseLine = donchian(basePeriods)
+leadLine1 = avg(conversionLine, baseLine)
+leadLine2 = donchian(laggingSpan2Periods)
+
+//plot(conversionLine, color=#0496ff, title="Conversion Line")
+//plot(baseLine, color=#991515, title="Base Line")
+//plot(close, offset = -displacement, color=#459915, title="Lagging Span")
+
+p4 = plot(leadLine1, offset = displacement, color= color.new(color.green, 100),
+ title="Lead 1")
+p5 = plot(leadLine2, offset = displacement, color= color.new(color.red, 100),  
+ title="Lead 2")
+fill(p4, p5, color = leadLine1 > leadLine2 and showichicloud ? color.green : showichicloud and leadLine1 < leadLine2 ? color.red : na)
+
+
+
+
+p1 = plot(enable1 ? dema1 : na, title = 'DEMA 1', color = #26c6da)
+p2 = plot(enable2 ? dema2 : na, title = 'DEMA 2', color = #43A047)
+p3 = plot(enable3 ? dema3 : na, title = 'DEMA 3', color = #d00000)
